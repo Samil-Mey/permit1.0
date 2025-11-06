@@ -486,8 +486,8 @@
                         <td class="px-6 py-4 font-medium text-slate-900">${row['NAMA PENUH PEMOHON'] || 'N/A'}</td>
                         <td class="px-6 py-4">${row['NAMA SEKOLAH'] || 'N/A'}</td>
                         <td class="px-6 py-4">${row['DAERAH'] || 'N/A'}</td>
-                        <td class="px-6 py-4">${formatDateToDDMMMYYYY(row['TARIKH MULA LATIHAN MENGAJAR'])}</td>
-                        <td class="px-6 py-4">${formatDateToDDMMMYYYY(row['TARIKH TAMAT LATIHAN MENGAJAR'])}</td>
+                        <td class="px-6 py-4">${formatDateToDDMMMYYYY(row['TARIKH MULA BERTUGAS'])}</td>
+                        <td class="px-6 py-4">${formatDateToDDMMMYYYY(row['TARIKH TAMAT BERTUGAS'])}</td>
                         <td class="px-6 py-4 text-center"><span class="status-badge ${statusClass}">${status}</span></td>
                         <td class="px-6 py-4 text-center">
                             <a href="${permitUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-white font-bold py-1.5 px-3 rounded-md text-xs transition-colors duration-300 ${downloadButtonClass} focus:outline-none focus:ring-2 focus:ring-offset-2" ${!hasPermit ? 'onclick="return false;"' : ''}>
