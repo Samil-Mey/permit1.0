@@ -34,9 +34,36 @@
             white-space: nowrap;
             border-radius: 9999px;
         }
-        .status-new {
-            color: #a16207; /* yellow-700 */
-            background-color: #fef9c3; /* yellow-100 */
+        /* Loader kecil untuk cell permit */
+        .loader-sm {
+            border: 3px solid #fee2e2; /* merah-100 */
+            border-top: 3px solid #dc2626; /* merah-600 */
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            animation: spin 1s linear infinite;
+        }
+
+     /* override ring for disabled download icon */
+        .icon-download-only {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 6px;
+            text-decoration: none;
+        }
+
+     /* Make the "Permit ready" button only an icon with accessible title */
+        .icon-download-only svg { width: 18px; height: 18px; }
+
+    /* small spacing helper if you later want text */
+        .icon-text-hidden { display: none; }
+
+        status-new {
+            color: #7f1d1d; /* merah-800 */
+            background-color: #fee2e2; /* merah-100 */
         }
         .status-approved {
             color: #166534; /* green-800 */
@@ -469,35 +496,77 @@
             }
 
             function renderTable(data) {
-                mainTableBody.innerHTML = ''; 
-                if (data.length === 0) {
-                    mainTableBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-slate-500">Tiada data ditemui sepadan dengan tapisan semasa.</td></tr>';
-                    return;
-                }
-                data.slice().reverse().forEach(row => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'bg-white border-b border-slate-200 hover:bg-slate-50';
-                    const hasPermit = row['NO PERMIT'] && row['NO PERMIT'].toString().trim() !== '';
-                    const status = hasPermit ? 'DILULUSKAN' : 'BAHARU';
-                    const statusClass = hasPermit ? 'status-approved' : 'status-new';
-                    const permitUrl = row['Merged Doc URL - PERMIT MySTEP'] || '#';
-                    const downloadButtonClass = hasPermit ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' : 'bg-slate-300 cursor-not-allowed';
-                    tr.innerHTML = `
-                        <td class="px-6 py-4 font-medium text-slate-900">${row['NAMA PENUH PEMOHON'] || 'N/A'}</td>
-                        <td class="px-6 py-4">${row['NAMA SEKOLAH'] || 'N/A'}</td>
-                        <td class="px-6 py-4">${row['DAERAH'] || 'N/A'}</td>
-                        <td class="px-6 py-4">${formatDateToDDMMMYYYY(row['TARIKH MULA BERTUGAS'])}</td>
-                        <td class="px-6 py-4">${formatDateToDDMMMYYYY(row['TARIKH TAMAT BERTUGAS'])}</td>
-                        <td class="px-6 py-4 text-center"><span class="status-badge ${statusClass}">${status}</span></td>
-                        <td class="px-6 py-4 text-center">
-                            <a href="${permitUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-white font-bold py-1.5 px-3 rounded-md text-xs transition-colors duration-300 ${downloadButtonClass} focus:outline-none focus:ring-2 focus:ring-offset-2" ${!hasPermit ? 'onclick="return false;"' : ''}>
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                Permit
-                            </a>
-                        </td>`;
-                    mainTableBody.appendChild(tr);
-                });
+    mainTableBody.innerHTML = '';
+    if (data.length === 0) {
+        mainTableBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-slate-500">Tiada data ditemui sepadan dengan tapisan semasa.</td></tr>';
+        return;
+    }
+
+    // helper: dapatkan tarikh penghantaran (cari beberapa kemungkinan kunci)
+    function getSubmissionDate(row) {
+        const possibleKeys = ['Timestamp', 'TIMESTAMP', 'Tarikh/Hantar', 'Tarikh', 'Masa', 'MASA', 'Timestamp '];
+        for (const k of possibleKeys) {
+            if (row[k]) {
+                const d = new Date(row[k]);
+                if (!isNaN(d.getTime())) return d;
             }
+        }
+        // juga cuba header default 'Timestamp' tanpa case sensitivity
+        for (const key in row) {
+            if (key.toLowerCase().includes('timestamp') || key.toLowerCase().includes('tarikh')) {
+                const d = new Date(row[key]);
+                if (!isNaN(d.getTime())) return d;
+            }
+        }
+        return null;
+    }
+
+    data.slice().reverse().forEach(row => {
+        const tr = document.createElement('tr');
+        tr.className = 'bg-white border-b border-slate-200 hover:bg-slate-50';
+
+        const hasPermit = row['NO PERMIT'] && row['NO PERMIT'].toString().trim() !== '';
+        // NEW: Status logic
+        // If hasPermit -> show "Fail Sedia"
+        // If no permit -> show "Proses Fail"
+        const status = hasPermit ? 'Fail Sedia' : 'Proses Fail';
+        const statusClass = hasPermit ? 'status-approved' : 'status-new';
+
+        const permitUrl = row['Merged Doc URL - PERMIT MySTEP'] || '';
+        
+        // Build permit cell differently for available vs not
+        let permitCellHtml = '';
+        if (hasPermit && permitUrl) {
+            // Icon-only download button (green)
+            permitCellHtml = `
+                <a href="${permitUrl}" title="Muat turun Permit" target="_blank" rel="noopener noreferrer"
+                   class="icon-download-only bg-green-600 hover:bg-green-700 text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                </a>`;
+        } else {
+            // No permit yet: show small red loader (Proses Fail)
+            permitCellHtml = `
+                <div class="flex items-center justify-center" title="PDF sedang diproses / belum terhasil">
+                    <div class="loader-sm" aria-hidden="true"></div>
+                </div>`;
+        }
+
+        tr.innerHTML = `
+            <td class="px-6 py-4 font-medium text-slate-900">${row['NAMA PENUH PEMOHON'] || 'N/A'}</td>
+            <td class="px-6 py-4">${row['NAMA SEKOLAH'] || 'N/A'}</td>
+            <td class="px-6 py-4">${row['DAERAH'] || 'N/A'}</td>
+            <td class="px-6 py-4">${formatDateToDDMMMYYYY(row['TARIKH MULA BERTUGAS'])}</td>
+            <td class="px-6 py-4">${formatDateToDDMMMYYYY(row['TARIKH TAMAT BERTUGAS'])}</td>
+            <td class="px-6 py-4 text-center"><span class="status-badge ${statusClass}">${status}</span></td>
+            <td class="px-6 py-4 text-center">${permitCellHtml}</td>
+        `;
+        mainTableBody.appendChild(tr);
+    });
+}
+
 
             function renderCharts(data) {
                 renderDistrictChart(data);
